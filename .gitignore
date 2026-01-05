@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Debug and logs
+debug.log
+*.log
+
+# Cache files
+metadata-cache.json
+
+# Node modules (if applicable)
+node_modules/
+
+# WordPress
+wp-config.php
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
