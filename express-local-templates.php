@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Express Local Templates
- * Description: Adds custom local JSON templates to the Elementor editor via a custom button and modal.
- * Version: 1.3.0
+ * Plugin Name: Express Local Templates (DEV)
+ * Description: [DEVELOPMENT VERSION] Adds custom local JSON templates to the Elementor editor via a custom button and modal.
+ * Version: 1.3.0-dev
  * Author: nexo | koode.mx
  */
 
