@@ -76,7 +76,7 @@ class Express_Source_Custom_Local extends Source_Base
             $category = (count($path_parts) > 1) ? $path_parts[0] : 'Uncategorized';
 
             $thumbnail = '';
-            $possible_extensions = ['jpg', 'jpeg', 'png', 'webp'];
+            $possible_extensions = ['webp', 'png', 'jpg', 'jpeg']; // WebP first for best performance
             $lower_filename = strtolower($filename);
 
             foreach ($possible_extensions as $ext) {

@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-01-06
+
+### Major Optimization
+- **Plugin Size Reduction**: Reduced total plugin size from 193MB to 91MB (53% reduction), making it faster to install, update, and distribute.
+- **Image Optimization**: Converted all 3,510 preview images from PNG to WebP format with intelligent resizing from 1484px to 800px width, reducing previews folder from 76MB to 38MB (50% reduction).
+- **Modern Image Format**: WebP provides superior compression while maintaining excellent visual quality at 85% quality setting.
+
+### Improved
+- **Image Loading Priority**: Updated preview image detection to prioritize WebP format first, falling back to PNG/JPG/JPEG for maximum compatibility.
+- **File Organization**: Added comprehensive .gitignore entries for backup folders and temporary files created during optimization process.
+- **Metadata Cache**: Cache automatically rebuilds to reference new WebP preview images on first load after update.
+
+### Technical Details
+- Preview images: 76MB → 38MB (3,510 files)
+- Image format: PNG @ 1484px → WebP @ 800px
+- Compression quality: 85% (excellent quality/size balance)
+- JSON templates: Already optimized (single-line format)
+- Total distributable size: ~91MB (under 100MB target)
+
+### Files Modified
+- `/includes/source-express-local.php`: Updated `$possible_extensions` to prioritize WebP
+- `.gitignore`: Added backup folders and temporary files
+- All preview images converted to WebP format
+
 ## [1.3.0] - 2026-01-05
 
 ### Major Fix

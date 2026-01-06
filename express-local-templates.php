@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Express Local Templates (DEV)
  * Description: [DEVELOPMENT VERSION] Adds custom local JSON templates to the Elementor editor via a custom button and modal.
- * Version: 1.3.0-dev
+ * Version: 1.4.0-dev
  * Author: nexo | koode.mx
  */
 
@@ -39,14 +39,14 @@ function express_enqueue_editor_assets()
 		'express-editor-style',
 		EXPRESS_LOCAL_TEMPLATES_URL . 'assets/css/editor.css',
 		array(),
-		'1.3.0'
+		'1.4.0'
 	);
 
 	wp_enqueue_script(
 		'express-editor-script',
 		EXPRESS_LOCAL_TEMPLATES_URL . 'assets/js/editor.js',
 		array('jquery'),
-		'1.3.0',
+		'1.4.0',
 		true
 	);
 
@@ -73,7 +73,7 @@ function express_enqueue_preview_assets()
 		'express-editor-style',
 		EXPRESS_LOCAL_TEMPLATES_URL . 'assets/css/editor.css',
 		array(),
-		'1.3.0'
+		'1.4.0'
 	);
 }
 add_action('elementor/preview/enqueue_styles', 'express_enqueue_preview_assets');

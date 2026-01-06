@@ -8,6 +8,11 @@ debug.log
 # Cache files
 metadata-cache.json
 
+# Backup folders (optimization)
+previews-backup-*
+templates-backup-*
+*.tmp
+
 # Node modules (if applicable)
 node_modules/
 
