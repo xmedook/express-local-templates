@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Express Local Templates
  * Description: Adds custom local JSON templates to the Elementor editor via a custom button and modal.
- * Version: 1.1.2
+ * Version: 1.3.0
  * Author: nexo | koode.mx
  */
 
@@ -14,6 +14,23 @@ define('EXPRESS_LOCAL_TEMPLATES_PATH', plugin_dir_path(__FILE__));
 define('EXPRESS_LOCAL_TEMPLATES_URL', plugin_dir_url(__FILE__));
 
 /**
+ * Fix for Elementor's Image Manager crashing on local template IDs.
+ */
+add_filter('wp_get_attachment_image_src', function ($image, $attachment_id, $size, $icon) {
+	if (!is_numeric($attachment_id) && !empty($attachment_id)) {
+		return ['', 0, 0, false]; // Return a dummy array to prevent "offset on bool" warning in Elementor
+	}
+	return $image;
+}, 5, 4);
+
+add_filter('wp_get_attachment_metadata', function ($data, $attachment_id) {
+	if (!is_numeric($attachment_id) && !empty($attachment_id)) {
+		return ['sizes' => []]; // Return a dummy array to prevent "offset on bool" warning in Elementor
+	}
+	return $data;
+}, 5, 2);
+
+/**
  * Enqueue editor assets.
  */
 function express_enqueue_editor_assets()
@@ -22,14 +39,14 @@ function express_enqueue_editor_assets()
 		'express-editor-style',
 		EXPRESS_LOCAL_TEMPLATES_URL . 'assets/css/editor.css',
 		array(),
-		'1.1.2'
+		'1.3.0'
 	);
 
 	wp_enqueue_script(
 		'express-editor-script',
 		EXPRESS_LOCAL_TEMPLATES_URL . 'assets/js/editor.js',
 		array('jquery'),
-		'1.1.2',
+		'1.3.0',
 		true
 	);
 
@@ -56,7 +73,7 @@ function express_enqueue_preview_assets()
 		'express-editor-style',
 		EXPRESS_LOCAL_TEMPLATES_URL . 'assets/css/editor.css',
 		array(),
-		'1.1.2'
+		'1.3.0'
 	);
 }
 add_action('elementor/preview/enqueue_styles', 'express_enqueue_preview_assets');

@@ -7,6 +7,7 @@
         exactMatch: false,
         loading: false,
         hasMore: true,
+        elementorVersion: null,
 
         init: function () {
             console.log('Express: Initializing...');
@@ -14,6 +15,12 @@
                 console.log('Express: window.elementor not found');
                 return;
             }
+
+            // Detect Elementor version
+            this.elementorVersion = elementor.config && elementor.config.version ? elementor.config.version : 'unknown';
+            console.log('Express: Elementor version detected:', this.elementorVersion);
+            console.log('Express: $e command system available:', typeof $e !== 'undefined' && typeof $e.run === 'function');
+
             elementor.on('preview:loaded', () => {
                 console.log('Express: Preview loaded event fired');
                 this.injectButton();
@@ -99,6 +106,7 @@
                                 </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 15px;">
+                                <button id="express-force-dirty" title="Force Publish Button" style="background: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s;">Force Dirty</button>
                                 <button id="express-refresh-cache" title="Refresh Cache" style="background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; cursor: pointer; color: #4a5568; display: flex; align-items: center; transition: all 0.2s;"><i class="eicon-sync"></i></button>
                                 <span id="express-modal-close" style="font-size: 28px; cursor: pointer; color: #a0aec0; line-height: 1; transition: color 0.2s;">&times;</span>
                             </div>
@@ -133,6 +141,7 @@
                     .express-category-item.active { background: #6d28d9; color: #fff !important; }
                     #express-modal-close:hover { color: #4a5568; }
                     #express-refresh-cache:hover { background: #edf2f7; color: #2d3748; border-color: #cbd5e0; }
+                    #express-force-dirty:hover { background: #e03e3e; transform: scale(1.05); }
                     #express-load-more-btn:hover { background: #5b21b6; transform: translateY(-2px); }
                     #express-load-more-btn:active { transform: translateY(0); }
                     #express-template-search:focus { border-color: #6d28d9; box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.1); }
@@ -172,6 +181,10 @@
             $('#express-refresh-cache').on('click', function () {
                 $(this).find('i').addClass('eicon-animation-spin');
                 self.resetAndLoad(true);
+            });
+
+            $('#express-force-dirty').on('click', function () {
+                self.triggerDirtyState(true);
             });
 
             // Initial load
@@ -298,6 +311,7 @@
 
         insertTemplate: function (templateId) {
             console.log('Express: Inserting template:', templateId);
+            const self = this;
             const $btn = $(`.express-insert-btn[data-id="${templateId}"]`);
             const originalText = $btn.text();
             $btn.text('Loading...').prop('disabled', true);
@@ -314,7 +328,65 @@
                     if (response.success) {
                         const data = response.data;
                         if (data && data.content) {
+                            console.log('Express: Template data received, attempting insertion...');
+
+                            // Try modern $e command system first (Elementor 3.0+)
+                            if (typeof $e !== 'undefined' && typeof $e.run === 'function') {
+                                console.log('Express: Using $e.run command system for insertion');
+                                try {
+                                    const currentDoc = elementor.documents.getCurrent();
+                                    const container = currentDoc.container;
+
+                                    // Ensure data.content is an array
+                                    const contentArray = Array.isArray(data.content) ? data.content : [data.content];
+
+                                    // Try Method 1: document/elements/create (most reliable for new elements)
+                                    console.log('Express: Attempting $e.run with document/elements/create...');
+                                    try {
+                                        contentArray.forEach((element) => {
+                                            $e.run('document/elements/create', {
+                                                container: container,
+                                                model: element,
+                                                options: {
+                                                    edit: false
+                                                }
+                                            });
+                                        });
+                                        console.log('Express: ✓ Template inserted successfully via $e.run (create)');
+                                        $('#express-modal-overlay').remove();
+                                        return;
+                                    } catch (createError) {
+                                        console.warn('Express: create method failed:', createError.message);
+
+                                        // Try Method 2: document/elements/import
+                                        console.log('Express: Attempting $e.run with document/elements/import...');
+                                        $e.run('document/elements/import', {
+                                            container: container,
+                                            model: container.model,
+                                            data: contentArray,
+                                            options: {
+                                                at: container.children.length,
+                                                rebuild: true
+                                            }
+                                        });
+                                        console.log('Express: ✓ Template inserted successfully via $e.run (import)');
+                                        $('#express-modal-overlay').remove();
+                                        return;
+                                    }
+                                } catch (e) {
+                                    console.warn('Express: All $e.run methods failed, using fallback:', e.message);
+                                }
+                            }
+
+                            // Fallback to legacy method
+                            console.log('Express: Using legacy addChildModel method');
                             elementor.getPreviewView().addChildModel(data.content);
+
+                            // Aggressive dirty state trigger for legacy method
+                            setTimeout(() => {
+                                self.triggerDirtyState(false, data.content);
+                            }, 500);
+
                             $('#express-modal-overlay').remove();
                         }
                     } else {
@@ -327,6 +399,161 @@
                     $btn.text(originalText).prop('disabled', false);
                 }
             });
+        },
+
+        triggerDirtyState: function (manual = false, content = null) {
+            const version = '1.3.1';
+            console.log(`Express: Triggering dirty state (v${version}, manual: ${manual})...`);
+
+            try {
+                const currentDoc = elementor.documents && elementor.documents.getCurrent();
+                console.log('Express: Current document:', currentDoc);
+                console.log('Express: Document editor:', currentDoc ? currentDoc.editor : 'N/A');
+                console.log('Express: Elementor saver:', elementor.saver);
+
+                if (currentDoc) {
+                    console.log('Express: Applying dirty state methods...');
+
+                    // Method 1: Modern $e commands (Most reliable for Elementor 3.0+)
+                    if (window.$e && typeof $e.run === 'function') {
+                        // Try document/save/set-is-modified
+                        try {
+                            $e.run('document/save/set-is-modified', { status: true });
+                            console.log('Express: ✓ $e.run set-is-modified executed');
+                        } catch (e) {
+                            console.warn('Express: $e.run set-is-modified failed:', e.message);
+                        }
+
+                        // Try document/save/mark-as-dirty
+                        try {
+                            $e.run('document/save/mark-as-dirty');
+                            console.log('Express: ✓ $e.run mark-as-dirty executed');
+                        } catch (e) {
+                            console.warn('Express: $e.run mark-as-dirty failed:', e.message);
+                        }
+
+                        // Try editor/documents/set-editing-mode
+                        try {
+                            $e.run('editor/documents/set-editing-mode', { mode: 'edit' });
+                            console.log('Express: ✓ $e.run set-editing-mode executed');
+                        } catch (e) {
+                            console.warn('Express: $e.run set-editing-mode failed:', e.message);
+                        }
+                    }
+
+                    // Method 2: Document model set dirty (Fundamental Backbone way)
+                    if (currentDoc.model) {
+                        currentDoc.model.set('dirty', true);
+                        currentDoc.model.trigger('change');
+                        currentDoc.model.trigger('change:dirty');
+                        currentDoc.model.trigger('status:change');
+                        console.log('Express: ✓ Document model dirty triggers executed');
+                    }
+
+                    // Method 3: Document setDirty (if it exists as a function)
+                    if (typeof currentDoc.setDirty === 'function') {
+                        currentDoc.setDirty(true);
+                        console.log('Express: ✓ currentDoc.setDirty() executed');
+                    }
+
+                    // Method 4: Document config dirty
+                    if (currentDoc.config) {
+                        currentDoc.config.isDirty = true;
+                        console.log('Express: ✓ Document config.isDirty set');
+                    }
+
+                    // Method 5: Container modification (Elementor 3.0+)
+                    if (currentDoc.container && currentDoc.container.model) {
+                        currentDoc.container.model.set('editedChanged', true);
+                        console.log('Express: ✓ Container model editedChanged set');
+                    }
+                }
+
+                // Method 6: Saver footerSaver setDirty
+                if (elementor.saver && elementor.saver.footerSaver) {
+                    if (typeof elementor.saver.footerSaver.setDirty === 'function') {
+                        elementor.saver.footerSaver.setDirty();
+                        console.log('Express: ✓ footerSaver.setDirty() executed');
+                    }
+                }
+
+                // Method 7: Channel triggers
+                if (elementor.channels) {
+                    if (elementor.channels.editor) {
+                        elementor.channels.editor.trigger('status:change', true);
+                        console.log('Express: ✓ Editor channel status:change triggered');
+                    }
+                    if (elementor.channels.data) {
+                        elementor.channels.data.trigger('dirty');
+                        elementor.channels.data.trigger('change');
+                        console.log('Express: ✓ Data channel dirty triggered');
+                    }
+                }
+
+                // Method 8: Direct DOM manipulation (Ensures button is clickable)
+                const $publishBtn = jQuery('#elementor-panel-saver-button-publish, #elementor-panel-saver-button-save-options');
+                $publishBtn.removeClass('elementor-disabled');
+                $publishBtn.prop('disabled', false);
+                console.log('Express: ✓ Publish button DOM manipulation applied');
+
+                // Method 9: Modern saver update via $e
+                if (window.$e && typeof $e.run === 'function') {
+                    try {
+                        $e.run('document/save/update');
+                        console.log('Express: ✓ $e.run document/save/update executed');
+                    } catch (e) {
+                        // Fallback to legacy if $e fails
+                        if (elementor.saver && typeof elementor.saver.update === 'function') {
+                            elementor.saver.update();
+                            console.log('Express: ✓ Saver update() executed (legacy)');
+                        }
+                    }
+                } else if (elementor.saver && typeof elementor.saver.update === 'function') {
+                    elementor.saver.update();
+                    console.log('Express: ✓ Saver update() executed (legacy)');
+                }
+
+                // Method 10: Add history record (forces Elementor to recognize change)
+                if (elementor.history && elementor.history.history) {
+                    try {
+                        const historyItem = {
+                            type: 'add',
+                            title: 'Express: Template Imported',
+                            subTitle: 'Template inserted from Express Local Templates',
+                            action: 'add',
+                            items: []
+                        };
+                        elementor.history.history.addItem(historyItem);
+                        console.log('Express: ✓ History item added');
+                    } catch (e) {
+                        console.warn('Express: History add failed:', e.message);
+                    }
+                }
+
+                // Method 11: Trigger page settings change
+                if (elementor.settings && elementor.settings.page && elementor.settings.page.model) {
+                    try {
+                        elementor.settings.page.model.trigger('change');
+                        console.log('Express: ✓ Page settings change triggered');
+                    } catch (e) {
+                        console.warn('Express: Page settings trigger failed:', e.message);
+                    }
+                }
+
+                console.log('Express: All dirty state methods completed');
+                console.log('Express: Checking button state...');
+                const $btn = jQuery('#elementor-panel-saver-button-publish, #elementor-panel-saver-button-save-options');
+                console.log('Express: Button has elementor-disabled class:', $btn.hasClass('elementor-disabled'));
+                console.log('Express: Button disabled attribute:', $btn.prop('disabled'));
+                console.log('Express: Button element:', $btn[0]);
+
+                if (manual) {
+                    alert('Force Dirty triggers executed. Check the Publish button!\n\nButton disabled: ' + $btn.prop('disabled') + '\nHas disabled class: ' + $btn.hasClass('elementor-disabled'));
+                }
+
+            } catch (e) {
+                console.error('Express: Error in triggerDirtyState:', e);
+            }
         }
     };
 
